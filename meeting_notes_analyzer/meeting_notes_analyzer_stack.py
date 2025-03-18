@@ -170,52 +170,75 @@ class MeetingNotesAnalyzerStack(Stack):
             allowed_methods=[aws_s3.HttpMethods.PUT],
             allowed_origins=["*"]
         )
-        
-        transcribe_lambda.add_to_role_policy(
+        input_file_bucket.add_to_resource_policy(
             aws_iam.PolicyStatement(
-                actions=[
-                    "transcribe:StartTranscriptionJob",
-                    "transcribe:GetTranscriptionJob"
-                ],
-                resources=[f"arn:aws:transcribe:{self.region}:{self.account}:transcription-job/*"]
-            )
-        )
-        transcribe_lambda.add_to_role_policy(
-            aws_iam.PolicyStatement(
-                actions=[
-                    "s3:GetObject",
-                    "s3:ListBucket"
-                ],
+                actions=["s3:GetObject", "s3:ListBucket"],
+                principals=[aws_iam.ServicePrincipal("transcribe.amazonaws.com")],
                 resources=[
                     input_file_bucket.bucket_arn,
                     f"{input_file_bucket.bucket_arn}/*"
                 ]
             )
         )
-
-
-        comprehend_lambda.add_to_role_policy(
-            aws_iam.PolicyStatement(
-                actions=[
-                    "comprehend:DetectEntities",
-                    "comprehend:DetectKeyPhrases",
-                    "comprehend:DetectSentiment"
-                ],
-                resources=["*"]  # Comprehend doesn't support resource-level permissions
-            )
-        )
-        comprehend_lambda.add_to_role_policy(
+        
+        transcribe_lambda.add_to_role_policy(
             aws_iam.PolicyStatement(
                 actions=[
                     "s3:GetObject",
-                    "s3:ListBucket"
+                    "s3:ListBucket",
+                    "transcribe:StartTranscriptionJob",
+                    "transcribe:GetTranscriptionJob"
                 ],
+                resources=[
+                    input_file_bucket.bucket_arn,
+                    f"{input_file_bucket.bucket_arn}/*",
+                    transcribe_file_bucket.bucket_arn,
+                    f"{transcribe_file_bucket.bucket_arn}/*",
+                    f"arn:aws:transcribe:{self.region}:{self.account}:transcription-job/*"
+                ]
+            )
+        )
+
+
+        transcribe_file_bucket.add_to_resource_policy(
+            aws_iam.PolicyStatement(
+                actions=["s3:PutObject"],
+                principals=[aws_iam.ServicePrincipal("transcribe.amazonaws.com")],
+                resources=[f"{transcribe_file_bucket.bucket_arn}/*"]
+            )
+        )
+
+        transcribe_file_bucket.add_to_resource_policy(
+            aws_iam.PolicyStatement(
+                actions=["s3:GetObject", "s3:ListBucket"],
+                principals=[aws_iam.ServicePrincipal("comprehend.amazonaws.com")],
                 resources=[
                     transcribe_file_bucket.bucket_arn,
                     f"{transcribe_file_bucket.bucket_arn}/*"
                 ]
             )
         )
+
+
+
+        comprehend_lambda.add_to_role_policy(
+            aws_iam.PolicyStatement(
+                actions=[
+                    "s3:GetObject",
+                    "s3:ListBucket",
+                    "comprehend:DetectDominantLanguage",
+                    "comprehend:DetectEntities",
+                    "comprehend:DetectKeyPhrases",
+                    "comprehend:DetectSentiment"
+                ],
+                resources=[
+                    transcribe_file_bucket.bucket_arn,
+                    f"{transcribe_file_bucket.bucket_arn}/*",
+                    f"arn:aws:comprehend:{self.region}:{self.account}:*"
+                ]
+            )
+        )
+
         comprehend_lambda.add_to_role_policy(
             aws_iam.PolicyStatement(
                 actions=[
@@ -241,6 +264,10 @@ class MeetingNotesAnalyzerStack(Stack):
         transcribe_lambda.add_environment(
             "INPUT_FILE_BUCKET",
             input_file_bucket.bucket_name,
+        )
+        transcribe_lambda.add_environment(
+            "OUTPUT_BUCKET_FILE",
+            transcribe_file_bucket.bucket_name,
         )
         transcribe_lambda.add_environment(
             "MAX_FILE_SIZE_MB",

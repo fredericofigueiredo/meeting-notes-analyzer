@@ -11,6 +11,7 @@ def extract_text_from_transcribe_result(bucket, key):
     """Get transcription text from Transcribe output"""
     try:
         response = s3.get_object(Bucket=bucket, Key=key)
+        print(response)
         transcribe_result = json.loads(response['Body'].read().decode('utf-8'))
         
         # Extract useful information
@@ -61,6 +62,14 @@ def lambda_handler(event, context):
         # Get bucket and file details from S3 event
         bucket = event['Records'][0]['s3']['bucket']['name']
         key = event['Records'][0]['s3']['object']['key']
+
+        if 'temp' in key:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': 'This is the temp file'
+                })
+            }
         
         # Extract user_id and job_name from key (format: user_id/jobname.json)
         user_id = key.split('/')[0]

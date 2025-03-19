@@ -31,10 +31,6 @@ class MeetingNotesAnalyzerStack(Stack):
                 name="user_id", 
                 type=aws_dynamodb.AttributeType.STRING
             ),
-            sort_key=aws_dynamodb.Attribute(
-                name="timestamp",
-                type=aws_dynamodb.AttributeType.STRING
-            ),
             billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption=aws_dynamodb.TableEncryption.AWS_MANAGED,
             point_in_time_recovery=True
@@ -255,7 +251,7 @@ class MeetingNotesAnalyzerStack(Stack):
                 actions=[
                     "dynamodb:GetItem",
                     "dynamodb:Query",
-                    "dynamodb:Scan"  # Remove if not needed
+                    "dynamodb:Scan"
                 ],
                 resources=[transcribe_results_table.table_arn]
             )
